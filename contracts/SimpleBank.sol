@@ -58,7 +58,7 @@ contract SimpleBank {
     /// @return The balance of the user
     // A SPECIAL KEYWORD prevents function from editing state variables;
     // allows function to run locally/off blockchain
-    function getBalance() public returns (uint) {
+    function getBalance() public view returns (uint) {
         /* Get the balance of the sender of this transaction */
          return balances [msg.sender];
     }
@@ -67,11 +67,11 @@ contract SimpleBank {
     /// @return The users enrolled status
     // Emit the appropriate event
     function enroll() public returns (bool){
-
-    	address user = msg.sender;
-        enrolled[user] = true;
-        emit LogEnrolled(user);
-        return enrolled[user];
+        
+        enrolled[msg.sender]=true;
+        emit LogEnrolled(msg.sender);
+        
+        return true;
     }
 
     /// @notice Deposit ether into bank
@@ -80,14 +80,15 @@ contract SimpleBank {
     // Use the appropriate global variables to get the transaction sender and value
     // Emit the appropriate event    
     // Users should be enrolled before they can make deposits
-    function deposit() public returns (uint) {
+    function deposit() public payable returns (uint) {
         /* Add the amount to the user's balance, call the event associated with a deposit,
           then return the balance of the user */
 
-        address user = msg.sender;
-        balances[user] += msg.value;
-        emit LogDepositMade(user, balances[user]);
-        return balances[user];
+         
+          enrolled[msg.sender]=true;
+          balances[msg.sender]+= msg.value; 
+          emit LogDepositMade(msg.sender,msg.value);
+          return balances[msg.sender];
     }
 
     /// @notice Withdraw ether from bank
@@ -95,19 +96,22 @@ contract SimpleBank {
     /// @param withdrawAmount amount you want to withdraw
     /// @return The balance remaining for the user
     // Emit the appropriate event    
-    function withdraw(uint withdrawAmount) public returns (uint) {
+    function withdraw(uint withdrawAmount) public payable returns (uint) {
         /* If the sender's balance is at least the amount they want to withdraw,
            Subtract the amount from the sender's balance, and try to send that amount of ether
            to the user attempting to withdraw. 
            return the user's balance.*/
 
-           address user = msg.sender;
-        
-        // withdrawAmount >= owner.balance
-        require(balances[user] >= withdrawAmount);
-        balances[user] -= withdrawAmount; 
-		emit LogWithdrawal(user, withdrawAmount, newBalance) ;
-        return balances[user];
+             if(withdrawAmount <= balances[msg.sender]){
+               balances[msg.sender]-=withdrawAmount;
+               msg.sender.transfer(withdrawAmount);
+           }
+           else{
+               revert();
+           }
+           
+           emit LogWithdrawal(msg.sender, withdrawAmount,msg.value);
+           return balances[msg.sender];
     }
 
 }
